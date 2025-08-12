@@ -6,6 +6,7 @@ const JUMP_FORCE = -300
 
 @onready var sprite = $AnimatedSprite2D
 @onready var jump_sfx = $"../sfx_jump"
+@onready var run_sfx = $"../sfx_run"
 
 var is_attacking = false
 
@@ -52,6 +53,7 @@ func _physics_process(delta):
 	elif direction != 0:
 		sprite.flip_h = direction < 0
 		play_animation("run")
+		run_sfx.play()
 	else:
 		play_animation("idle")
 
