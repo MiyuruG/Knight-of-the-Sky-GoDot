@@ -12,7 +12,7 @@ func _ready():
 	if not player:
 		push_warning("Player not found in group 'player'!")
 
-func _physics_process(delta):
+func _physics_process(_delta):
 	if not player or !is_instance_valid(player):
 		return
 

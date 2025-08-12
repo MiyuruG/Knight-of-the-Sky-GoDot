@@ -1,10 +1,11 @@
 extends CharacterBody2D
 
-const SPEED = 130
-const GRAVITY = 1000
+const SPEED = 100
+const GRAVITY = 1250
 const JUMP_FORCE = -300
 
 @onready var sprite = $AnimatedSprite2D
+@onready var jump_sfx = $"../sfx_jump"
 
 var is_attacking = false
 
@@ -32,7 +33,7 @@ func _physics_process(delta):
 	# Jumping
 	if not is_attacking and is_on_floor() and Input.is_action_just_pressed("ui_accept"):
 		velocity.y = JUMP_FORCE
-
+		jump_sfx.play()
 	# Attack start
 	if not is_attacking and Input.is_action_just_pressed("attack"):
 		is_attacking = true
