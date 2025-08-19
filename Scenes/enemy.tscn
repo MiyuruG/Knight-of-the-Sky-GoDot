@@ -223,4 +223,12 @@ script = ExtResource("3_afpow")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
 shape = SubResource("RectangleShape2D_afpow")
 
+[node name="ProgressBar" type="ProgressBar" parent="."]
+offset_left = -3.0
+offset_top = -6.0
+offset_right = 4.0
+offset_bottom = -2.0
+value = 100.0
+show_percentage = false
+
 [connection signal="area_entered" from="Hurtbox" to="." method="_on_hurtbox_area_entered"]
