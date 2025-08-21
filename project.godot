@@ -14,6 +14,11 @@ config/name="Knight and the queen"
 run/main_scene="uid://drbuvyxjt7no0"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 
+[autoload]
+
+AudioStreamPlayer2d="*res://Scenes/audio_stream_player_2d.tscn"
+GlobalAudioStreamPlayer="*res://Scenes/audio_stream_player.tscn"
+
 [input]
 
 attack={
