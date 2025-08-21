@@ -5,12 +5,12 @@
 [ext_resource type="Texture2D" uid="uid://cc75072i74i2q" path="res://Assets/Sprites/parallax2/SkyBG.png" id="2_ldgsr"]
 [ext_resource type="PackedScene" uid="uid://1akpdte7lq12" path="res://Scenes/enemy.tscn" id="3_3dryh"]
 [ext_resource type="Texture2D" uid="uid://busfhpp35mfwm" path="res://Assets/Sprites/parallax2/Blurred Clouds Blended.png" id="3_o5yvi"]
-[ext_resource type="AudioStream" uid="uid://bl5iqxkwjr0vw" path="res://Assets/Music/background music 01.mp3" id="4_3dryh"]
 [ext_resource type="Texture2D" uid="uid://btgrwgmuanv47" path="res://Assets/Sprites/parallax2/clouds 1.png" id="4_h4fw4"]
 [ext_resource type="Texture2D" uid="uid://b55exubtjokkb" path="res://Assets/Sprites/parallax2/clouds 2.png" id="5_ldgsr"]
 [ext_resource type="AudioStream" uid="uid://bo8a6xbsvfyr5" path="res://Assets/fx/Run01.mp3" id="6_1l0tm"]
 [ext_resource type="AudioStream" uid="uid://bdcnm2vthtr6q" path="res://Assets/fx/Jump67.mp3" id="6_i6g32"]
 [ext_resource type="PackedScene" uid="uid://da6vdfya1m3b7" path="res://Scenes/platform.tscn" id="11_o5yvi"]
+[ext_resource type="PackedScene" uid="uid://gvabslcm6ykr" path="res://Scenes/audio_stream_player.tscn" id="12_rfjv2"]
 [ext_resource type="PackedScene" uid="uid://cxeil662cycc7" path="res://Scenes/killzone.tscn" id="12_rku1e"]
 
 [sub_resource type="CompressedTexture2D" id="CompressedTexture2D_wowpa"]
@@ -428,12 +428,10 @@ texture = ExtResource("2_ldgsr")
 centered = false
 
 [node name="Sprite2D2" type="Sprite2D" parent="ParallaxBackground/ParallaxLayer"]
-visible = false
 texture = ExtResource("3_o5yvi")
 centered = false
 
 [node name="Sprite2D5" type="Sprite2D" parent="ParallaxBackground/ParallaxLayer"]
-visible = false
 position = Vector2(256, 0)
 texture = ExtResource("3_o5yvi")
 centered = false
@@ -480,11 +478,9 @@ tile_map_data = PackedByteArray("AAAAAAcAAAANABAAAAAAAAgAAAANABEAAAABAAQAAAAAAAs
 tile_set = SubResource("TileSet_wowpa")
 
 [node name="Enemy" parent="." instance=ExtResource("3_3dryh")]
+visible = false
 position = Vector2(348, 45)
 collision_layer = 2
-
-[node name="AudioStreamPlayer2D" type="AudioStreamPlayer2D" parent="."]
-stream = ExtResource("4_3dryh")
 
 [node name="sfx_jump" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("6_i6g32")
@@ -510,3 +506,6 @@ autoplay = "move"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Killzone"]
 shape = SubResource("WorldBoundaryShape2D_rku1e")
+
+[node name="AudioStreamPlayer" parent="." instance=ExtResource("12_rfjv2")]
+autoplay = true

@@ -4,4 +4,3 @@
 
 [node name="AudioStreamPlayer" type="AudioStreamPlayer"]
 stream = ExtResource("1_px1li")
-autoplay = true
