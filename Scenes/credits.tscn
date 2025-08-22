@@ -1,0 +1,92 @@
+[gd_scene load_steps=5 format=3 uid="uid://lfiaicefjf1b"]
+
+[ext_resource type="Script" uid="uid://dmk278701pe33" path="res://Scripts/credits.gd" id="1_ccovl"]
+[ext_resource type="Texture2D" uid="uid://5th5hrkpuqie" path="res://Assets/Sprites/istockphoto-1356593868-612x612.jpg" id="1_r18jl"]
+[ext_resource type="FontFile" uid="uid://b6fpdbrnccqny" path="res://Assets/Fonts/PixelOperator8.ttf" id="3_1bamb"]
+[ext_resource type="Texture2D" uid="uid://bv3mc8j0y2vhw" path="res://Assets/Sprites/Resized logo.png" id="4_1bamb"]
+
+[node name="Credits" type="Node"]
+script = ExtResource("1_ccovl")
+
+[node name="TextureRect" type="TextureRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("1_r18jl")
+
+[node name="Label" type="Label" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.913725, 0.231373, 0.0470588, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0.184314, 0.619608)
+theme_override_colors/font_outline_color = Color(0.854902, 1, 0.192157, 1)
+theme_override_font_sizes/font_size = 32
+text = "
+
+Developed by:
+Thedaswin
+Miyuru (AKA McBoss)
+
+Art & Additional Assets:
+See full credits at:
+
+Thank you for playing!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label2" type="Label" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -228.5
+offset_top = 116.5
+offset_right = 228.5
+offset_bottom = 201.5
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.0509804, 0, 1, 1)
+theme_override_colors/font_shadow_color = Color(0.623529, 0.8, 0.815686, 1)
+theme_override_colors/font_outline_color = Color(0, 1, 0, 1)
+theme_override_font_sizes/font_size = 32
+text = "kots.mcboss.top/credits"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -85.0
+offset_top = 259.0
+offset_right = 64.0
+offset_bottom = 292.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("3_1bamb")
+text = "Back"
+
+[node name="TextureRect2" type="TextureRect" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -113.0
+offset_top = -271.5
+offset_right = 113.0
+offset_bottom = -128.5
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("4_1bamb")
+expand_mode = 1
+
+[connection signal="pressed" from="Button" to="." method="_on_button_pressed"]

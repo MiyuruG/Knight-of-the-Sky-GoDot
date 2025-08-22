@@ -1,8 +1,10 @@
 extends Node
 
+@onready var points_laber: Label = %Points_Laber
 
-var score = 0
+var points = 0
 
 func add_point():
-	score += 1
-	print(score)
+	points += 1
+	print(points)
+	points_laber.text = "Points:" + str(points)

@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://gvabslcm6ykr"]
+[gd_scene load_steps=2 format=3 uid="uid://crtscuqkxvqc0"]
 
 [ext_resource type="AudioStream" uid="uid://bl5iqxkwjr0vw" path="res://Assets/Music/background music 01.mp3" id="1_px1li"]
 
 [node name="AudioStreamPlayer" type="AudioStreamPlayer"]
 stream = ExtResource("1_px1li")
+volume_db = -1.268
+autoplay = true

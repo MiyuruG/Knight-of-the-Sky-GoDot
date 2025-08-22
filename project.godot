@@ -11,8 +11,20 @@ config_version=5
 [application]
 
 config/name="Knight and the queen"
-run/main_scene="uid://drbuvyxjt7no0"
+run/main_scene="uid://cjatae4qkg0rv"
 config/features=PackedStringArray("4.4", "GL Compatibility")
+
+[audio]
+
+buses/default_bus_layout=""
+
+[autoload]
+
+GlobalAudioStreamPlayer="*res://Scenes/audio_stream_player.tscn"
+
+[display]
+
+window/stretch/mode="canvas_items"
 
 [input]
 
