@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cdogp7yox2fja"
-path="res://.godot/imported/Bat-IdleFly.png-b8ed78fc4139a94af0380dcff1d8c2e0.ctex"
+uid="uid://dqy03emrsr3tp"
+path="res://.godot/imported/DEATH.png-aebe78de156ac226340a20e27d4e778f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Assets/Sprites/Enemy/Bat-IdleFly.png"
-dest_files=["res://.godot/imported/Bat-IdleFly.png-b8ed78fc4139a94af0380dcff1d8c2e0.ctex"]
+source_file="res://Assets/Sprites/Enemy/DEATH.png"
+dest_files=["res://.godot/imported/DEATH.png-aebe78de156ac226340a20e27d4e778f.ctex"]
 
 [params]
 

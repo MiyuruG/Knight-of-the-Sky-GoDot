@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://qgeijhqv6qf1"
-path="res://.godot/imported/Bat-Die.png-4752bed9e7eee64e07a0602d964bf999.ctex"
+uid="uid://flueix6kfqn6"
+path="res://.godot/imported/IDLE.png-ae61fa8141333625541b1d639580d542.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Assets/Sprites/Enemy/Bat-Die.png"
-dest_files=["res://.godot/imported/Bat-Die.png-4752bed9e7eee64e07a0602d964bf999.ctex"]
+source_file="res://Assets/Sprites/Enemy/IDLE.png"
+dest_files=["res://.godot/imported/IDLE.png-ae61fa8141333625541b1d639580d542.ctex"]
 
 [params]
 

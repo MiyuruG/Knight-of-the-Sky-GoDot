@@ -1,103 +1,217 @@
 extends CharacterBody2D
 
-const SPEED = 100
-const GRAVITY = 1250
-const JUMP_FORCE = -300
+@export var health: int = 100
+@export var speed: float = 200.0
+@export var jump_velocity: float = -400.0
+@export var attack_damage: int = 20
+@export var attack_range: float = 60.0
 
-@onready var sprite = $AnimatedSprite2D
-@onready var jump_sfx = $"../sfx_jump"
-@onready var run_sfx = $"../sfx_run"
+@onready var animated_sprite = $AnimatedSprite2D
+var can_attack: bool = true
+var attack_cooldown: float = 0.5
 
-var is_attacking = false
-@export var attack_damage := 25
-@export var attack_range := 50.0
+# Get the gravity from the project settings to be synced with RigidBody nodes
+var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
 
 func _ready():
-	sprite.animation_finished.connect(_on_animation_finished)
-	sprite.frame_changed.connect(_on_frame_changed)
-	print("Connected animation_finished and frame_changed signals")
-
-func take_damage(amount):
-	print("Player took", amount, "damage")
-	# Subtract health here if needed
+	# Add player to group for easy reference
+	add_to_group("player")
+	if animated_sprite:
+		animated_sprite.play("idle")
 
 func _physics_process(delta):
-	# Apply gravity
+	handle_movement()
+	handle_attack()
+
+func handle_movement():
+	# Add gravity
 	if not is_on_floor():
-		velocity.y += GRAVITY * delta
+		velocity.y += gravity * get_physics_process_delta_time()
+	
+	# Handle jump
+	if Input.is_action_just_pressed("ui_accept") or Input.is_action_just_pressed("jump"):
+		if is_on_floor():
+			velocity.y = jump_velocity
+			if animated_sprite:
+				animated_sprite.play("jump")
+	
+	# Get horizontal input direction
+	var direction = 0
+	if Input.is_action_pressed("ui_left"):
+		direction -= 1
+	if Input.is_action_pressed("ui_right"):
+		direction += 1
+	
+	# Handle horizontal movement
+	if direction != 0:
+		velocity.x = direction * speed
+		
+		# Flip sprite based on movement direction
+		if animated_sprite:
+			if direction < 0:
+				animated_sprite.flip_h = true
+			elif direction > 0:
+				animated_sprite.flip_h = false
 	else:
-		if not is_attacking:
-			velocity.y = 0
-
-	# Movement input
-	var direction = Input.get_action_strength("ui_right") - Input.get_action_strength("ui_left")
-	velocity.x = direction * SPEED
-
-	# Jumping
-	if not is_attacking and is_on_floor() and Input.is_action_just_pressed("ui_accept"):
-		velocity.y = JUMP_FORCE
-		jump_sfx.play()
-
-	# Attacking
-	if not is_attacking and Input.is_action_just_pressed("attack"):
-		is_attacking = true
-		velocity.x = 0
-		play_animation("attack")
-		return
-
+		velocity.x = move_toward(velocity.x, 0, speed)
+	
+	# Handle animations based on state
+	if animated_sprite and animated_sprite.animation != "attack" and animated_sprite.animation != "hurt":
+		if not is_on_floor():
+			if velocity.y < 0:
+				animated_sprite.play("jump")
+			else:
+				animated_sprite.play("fall")
+		elif direction != 0:
+			animated_sprite.play("walk")
+		else:
+			animated_sprite.play("idle")
+	
 	move_and_slide()
 
-	# Animation logic
-	if is_attacking:
+func handle_attack():
+	# Check for attack input (separate from jump)
+	if Input.is_action_just_pressed("attack"):
+		if can_attack:
+			attack()
+
+func attack():
+	if not can_attack:
+		print("Attack on cooldown!")
 		return
+		
+	can_attack = false
+	print("Player attacking...")
+	
+	# Play attack animation
+	if animated_sprite:
+		animated_sprite.play("attack")
+	
+	# Find enemies in range - with detailed debugging
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	print("Found ", enemies.size(), " enemies in group")
+	
+	var found_target = false
+	for enemy in enemies:
+		if enemy and is_instance_valid(enemy):
+			var distance_to_enemy = global_position.distance_to(enemy.global_position)
+			print("Distance to enemy: ", distance_to_enemy, " (attack range: ", attack_range, ")")
+			
+			if distance_to_enemy <= attack_range:
+				print("Enemy in range! Attacking...")
+				if enemy.has_method("take_damage"):
+					enemy.take_damage(attack_damage)
+					print("Damage dealt! Enemy health after attack: ", enemy.health)
+					print("Player health: ", health)  # Show player's current health too
+					found_target = true
+				else:
+					print("ERROR: Enemy doesn't have take_damage method!")
+				break  # Attack only one enemy at a time
+			else:
+				print("Enemy too far away to attack")
+	
+	if not found_target:
+		print("No enemies in attack range")
+	
+	# Use a Timer node instead of await to prevent interruption
+	var timer = Timer.new()
+	add_child(timer)
+	timer.timeout.connect(_on_attack_cooldown_finished)
+	timer.start(attack_cooldown)
 
-	if not is_on_floor():
-		play_animation("jump")
-	elif direction != 0:
-		sprite.flip_h = direction < 0
-		play_animation("run")
-		run_sfx.play()
+func _on_attack_cooldown_finished():
+	can_attack = true
+	print("Attack ready!")
+	
+	# Clean up the timer
+	var timers = get_children().filter(func(child): return child is Timer)
+	for timer in timers:
+		timer.queue_free()
+	
+	# Return to appropriate animation
+	if animated_sprite:
+		if not is_on_floor():
+			if velocity.y < 0:
+				animated_sprite.play("jump")
+			else:
+				animated_sprite.play("fall")
+		elif velocity.x != 0:
+			animated_sprite.play("walk")
+		else:
+			animated_sprite.play("idle")
+
+func take_damage(damage: int):
+	print("=== PLAYER TAKE_DAMAGE CALLED ===")
+	print("Damage received: ", damage)
+	print("Player health before damage: ", health)
+	
+	health -= damage
+	
+	print("Player health after damage: ", health)
+	print("Player's health is reduced by ", damage, " - Current health: ", health)
+	
+	# Play hurt animation if available
+	if animated_sprite:
+		animated_sprite.play("hurt")
+		await animated_sprite.animation_finished
+		if health > 0:
+			if not is_on_floor():
+				if velocity.y < 0:
+					animated_sprite.play("jump")
+				else:
+					animated_sprite.play("fall")
+			elif velocity.x != 0:
+				animated_sprite.play("walk")
+			else:
+				animated_sprite.play("idle")
+	
+	# Check if player is dead
+	if health <= 0:
+		print("PLAYER CALLING DIE FUNCTION!")
+		die()
 	else:
-		play_animation("idle")
+		print("Player still alive with ", health, " health")
 
-func play_animation(anim: String):
-	if sprite.animation != anim:
-		sprite.play(anim)
+func take_damage_from_enemy(damage: int, enemy: Node):
+	print("Player taking damage from enemy...")
+	# Double-check we're still in range of the attacking enemy
+	if enemy and is_instance_valid(enemy):
+		var distance_to_enemy = global_position.distance_to(enemy.global_position)
+		if distance_to_enemy <= enemy.attack_range:
+			take_damage(damage)
+		else:
+			print("Player avoided damage - out of enemy range!")
+	if health < 60:
+		$"../UI/Hearts/HBoxContainer/Heart".visible = false
+	if health < 30:
+		$"../UI/Hearts/HBoxContainer/Heart2".visible = false
+	if health < 1:
+		$"../UI/Hearts/HBoxContainer/Heart3".visible = false
 
-func _on_animation_finished():
-	if sprite.animation == "attack":
-		is_attacking = false
-		print("Attack finished")
+		# If out of range, don't take damage or play hurt animation
 
-func _on_frame_changed():
-	if sprite.animation == "attack" and sprite.frame == 3:  # adjust frame as needed
-		check_for_attack_hit()
-
-func check_for_attack_hit():
-	var space_state = get_world_2d().direct_space_state
-
-	var direction: Vector2
-	if not sprite.flip_h:
-		direction = Vector2.RIGHT
+func die():
+	print("=== PLAYER DIE FUNCTION CALLED ===")
+	print("Game Over! Player health: ", health)
+	
+	# Play death animation first, THEN pause
+	if animated_sprite:
+		print("Playing player death animation...")
+		animated_sprite.play("death")
+		
+		# Wait for death animation to finish before pausing
+		if animated_sprite.sprite_frames and animated_sprite.sprite_frames.has_animation("death"):
+			await animated_sprite.animation_finished
+			print("Player death animation finished")
+		else:
+			# If no death animation, wait a brief moment
+			print("No death animation found, waiting...")
+			await get_tree().create_timer(1.0).timeout
 	else:
-		direction = Vector2.LEFT
-
-	var attack_box_size = Vector2(attack_range, 20)
-	var attack_pos = global_position + direction * (attack_range * 0.5)
-
-	var shape = RectangleShape2D.new()
-	shape.extents = attack_box_size / 2.0
-
-	var query = PhysicsShapeQueryParameters2D.new()
-	query.shape = shape
-	query.transform = Transform2D(0, attack_pos)
-	query.collision_mask = 1
-	query.exclude = [self]
-
-	var results = space_state.intersect_shape(query, 8)
-
-	for result in results:
-		var enemy = result.get("collider")
-		if enemy and enemy.is_in_group("enemies"):
-			print("Hit enemy:", enemy.name)
-			enemy.take_damage(attack_damage)
+		# No animated sprite, just wait briefly
+		print("No animated sprite, waiting before game over...")
+		await get_tree().create_timer(1.0).timeout
+	
+	# NOW pause the game after animation is done
+	print("Game paused - Player is dead")
+	get_tree().reload_current_scene()

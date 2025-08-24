@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bb4fnqoc3ldcr"
-path="res://.godot/imported/Bat-Run.png-7b714aad4065c78a59a307172f8cebf4.ctex"
+uid="uid://cycecjubxatw6"
+path="res://.godot/imported/FLYING.png-448de2ccc676650b743e2b8a4ded6484.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Assets/Sprites/Enemy/Bat-Run.png"
-dest_files=["res://.godot/imported/Bat-Run.png-7b714aad4065c78a59a307172f8cebf4.ctex"]
+source_file="res://Assets/Sprites/Enemy/FLYING.png"
+dest_files=["res://.godot/imported/FLYING.png-448de2ccc676650b743e2b8a4ded6484.ctex"]
 
 [params]
 

@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=4 uid="uid://b3o78r6imjklp"]
+[gd_scene load_steps=21 format=4 uid="uid://b3o78r6imjklp"]
 
 [ext_resource type="Script" uid="uid://cq21u8r0g0gi1" path="res://Scripts/bg_audio.gd" id="1_ca0bt"]
 [ext_resource type="Texture2D" uid="uid://cc75072i74i2q" path="res://Assets/Sprites/parallax2/SkyBG.png" id="2_yj6rp"]
@@ -6,7 +6,6 @@
 [ext_resource type="Texture2D" uid="uid://btgrwgmuanv47" path="res://Assets/Sprites/parallax2/clouds 1.png" id="4_5flq6"]
 [ext_resource type="Texture2D" uid="uid://b55exubtjokkb" path="res://Assets/Sprites/parallax2/clouds 2.png" id="5_051s1"]
 [ext_resource type="PackedScene" uid="uid://dijpkcxrylwmm" path="res://Scenes/player.tscn" id="6_in4v8"]
-[ext_resource type="PackedScene" uid="uid://1akpdte7lq12" path="res://Scenes/enemy.tscn" id="7_mu7lp"]
 [ext_resource type="Texture2D" uid="uid://vxgfxnuvj60f" path="res://Assets/Sprites/stonetile_32x32.png" id="7_vn460"]
 [ext_resource type="AudioStream" uid="uid://bdcnm2vthtr6q" path="res://Assets/fx/Jump67.mp3" id="8_5qi50"]
 [ext_resource type="AudioStream" uid="uid://bo8a6xbsvfyr5" path="res://Assets/fx/Run01.mp3" id="9_1apgh"]
@@ -14,7 +13,7 @@
 [ext_resource type="Script" uid="uid://bfys7oler3hh4" path="res://Scripts/game_manager.gd" id="13_7k4fu"]
 [ext_resource type="PackedScene" uid="uid://cfspvry271r0d" path="res://Scenes/fire_pit.tscn" id="14_tp0ft"]
 [ext_resource type="PackedScene" uid="uid://cjatae4qkg0rv" path="res://Scenes/main_menu.tscn" id="15_ca0bt"]
-[ext_resource type="FontFile" uid="uid://b6fpdbrnccqny" path="res://Assets/Fonts/PixelOperator8.ttf" id="15_yjaoa"]
+[ext_resource type="FontFile" uid="uid://o2oca8mw1k1c" path="res://Assets/Fonts/PixelOperator8.ttf" id="15_yjaoa"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_r8hce"]
 texture = ExtResource("7_vn460")
@@ -664,7 +663,6 @@ sources/0 = SubResource("TileSetAtlasSource_3dryh")
 distance = -249.0
 
 [node name="Game" type="Node2D"]
-position = Vector2(1, 0)
 script = ExtResource("1_ca0bt")
 
 [node name="ParallaxBackground" type="ParallaxBackground" parent="."]
@@ -737,11 +735,6 @@ tile_set = SubResource("TileSet_ca0bt")
 [node name="TileMapLayer" type="TileMapLayer" parent="."]
 tile_map_data = PackedByteArray("AAAPAAUAAAAGAA8AAAAOAAEAAAAGAAsAAAAOAAIAAAAGAAwAAAAOAAMAAAAGAA0AAAAPAAEAAAAHAAsAAAAPAAIAAAAHAAwAAAAPAAMAAAAHAA0AAAAPAAQAAAAHAA4AAAAQAAEAAAAIAAsAAAAQAAIAAAAIAAwAAAAQAAMAAAAIAA0AAAAFAAQAAAAFAAAAAAAFAAUAAAAFAAEAAAAGAAUAAAADAAYAAAATAAMAAAAFAAIAAAAeAAcAAAADAAEAAAAdAAcAAAAEAAYAAAA=")
 tile_set = SubResource("TileSet_wowpa")
-
-[node name="Enemy" parent="." instance=ExtResource("7_mu7lp")]
-visible = false
-position = Vector2(348, 45)
-collision_layer = 2
 
 [node name="sfx_jump" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("8_5qi50")

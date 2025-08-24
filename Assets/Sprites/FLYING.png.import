@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ccem7sybgu75b"
-path="res://.godot/imported/Bat-Attack1.png-31c79ec9d7dea558c7ffeececb0c6697.ctex"
+uid="uid://clfhk7dhvfd0o"
+path="res://.godot/imported/FLYING.png-d9eea593300da3b22b42a2c027a28858.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Assets/Sprites/Enemy/Bat-Attack1.png"
-dest_files=["res://.godot/imported/Bat-Attack1.png-31c79ec9d7dea558c7ffeececb0c6697.ctex"]
+source_file="res://Assets/Sprites/FLYING.png"
+dest_files=["res://.godot/imported/FLYING.png-d9eea593300da3b22b42a2c027a28858.ctex"]
 
 [params]
 
