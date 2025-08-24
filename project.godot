@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Knight and the queen"
-run/main_scene="uid://drbuvyxjt7no0"
+run/main_scene="uid://bfkexpi5j6biu"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 
 [audio]

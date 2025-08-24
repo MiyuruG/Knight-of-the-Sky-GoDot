@@ -46,6 +46,11 @@ func _ready():
 		animated_sprite.play("idle")
 
 func _physics_process(delta):
+	# Handle main menu navigation
+	if Input.is_action_just_pressed("ui_cancel"):
+		get_tree().change_scene_to_file("res://Scenes/main_menu.tscn")
+		return
+	
 	if is_dead:
 		return
 		

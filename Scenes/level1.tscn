@@ -1,4 +1,4 @@
-[gd_scene load_steps=28 format=4 uid="uid://drbuvyxjt7no0"]
+[gd_scene load_steps=27 format=4 uid="uid://drbuvyxjt7no0"]
 
 [ext_resource type="Script" uid="uid://cq21u8r0g0gi1" path="res://Scripts/bg_audio.gd" id="1_bdr3p"]
 [ext_resource type="Texture2D" uid="uid://cc75072i74i2q" path="res://Assets/Sprites/parallax2/SkyBG.png" id="2_wwu6c"]
@@ -18,7 +18,6 @@
 [ext_resource type="FontFile" uid="uid://o2oca8mw1k1c" path="res://Assets/Fonts/PixelOperator8.ttf" id="15_x7ktg"]
 [ext_resource type="Texture2D" uid="uid://lunuxtr0f07u" path="res://Assets/heart.png" id="15_yymuf"]
 [ext_resource type="PackedScene" uid="uid://b3o78r6imjklp" path="res://Scenes/level2.tscn" id="16_wwu6c"]
-[ext_resource type="PackedScene" uid="uid://ds417vby46cpa" path="res://Scenes/enemy.tscn" id="17_yymuf"]
 [ext_resource type="PackedScene" uid="uid://gfsqoblijxgx" path="res://Scenes/mushroom-enemy.tscn" id="19_nolpu"]
 
 [sub_resource type="CompressedTexture2D" id="CompressedTexture2D_wowpa"]
@@ -639,14 +638,6 @@ expand_mode = 2
 position = Vector2(1990, 40)
 target_level = ExtResource("16_wwu6c")
 
-[node name="Enemy" parent="." instance=ExtResource("19_nolpu")]
-position = Vector2(801, 85)
-attack_damage = 5
-
-[node name="Enemy2" parent="." instance=ExtResource("19_nolpu")]
-position = Vector2(1270, 50)
-attack_damage = 5
-
 [node name="Lables" type="Node" parent="."]
 
 [node name="Label" type="Label" parent="Lables"]
@@ -670,30 +661,6 @@ offset_bottom = 113.0
 theme_override_fonts/font = ExtResource("15_x7ktg")
 theme_override_font_sizes/font_size = 8
 text = "Dont fall from these floating islands!"
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 2
-
-[node name="Label3" type="Label" parent="Lables"]
-offset_left = 625.0
-offset_top = 78.0
-offset_right = 731.0
-offset_bottom = 130.0
-theme_override_fonts/font = ExtResource("15_x7ktg")
-theme_override_font_sizes/font_size = 8
-text = "Deadly mushrooms! Don’t touch — poison!"
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 2
-
-[node name="Label4" type="Label" parent="Lables"]
-offset_left = 785.0
-offset_top = 98.0
-offset_right = 877.0
-offset_bottom = 151.0
-theme_override_fonts/font = ExtResource("15_x7ktg")
-theme_override_font_sizes/font_size = 8
-text = "Mushroom mobs stay passive—until provoked."
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
@@ -722,14 +689,8 @@ horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
 
-[node name="Enemy3" parent="." instance=ExtResource("17_yymuf")]
-position = Vector2(672, 49)
-attack_damage = 5
+[node name="Enemy" parent="." instance=ExtResource("19_nolpu")]
+position = Vector2(1518, 50)
 
-[node name="Enemy4" parent="." instance=ExtResource("17_yymuf")]
-position = Vector2(899, 99)
-attack_damage = 5
-
-[node name="Enemy5" parent="." instance=ExtResource("17_yymuf")]
-position = Vector2(219, 91)
-attack_damage = 5
+[node name="Enemy2" parent="." instance=ExtResource("19_nolpu")]
+position = Vector2(804, 85)

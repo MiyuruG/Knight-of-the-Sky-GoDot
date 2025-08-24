@@ -1,334 +1,246 @@
 extends CharacterBody2D
 
-# Enemy stats (updated values)
-@export var health: int = 100
-@export var speed: float = 120.0
-@export var attack_damage: int = 10
-@export var attack_range: float = 60.0
-@export var detection_range: float = 200.0
+# Core stats
+@export var max_health: int = 80
+@export var move_speed: float = 120.0
+@export var attack_damage: int = 15
 
-# Enemy flight behavior
-@export var hover_distance: float = 80.0  # How close to get to player
-@export var attack_cooldown: float = 2.0
-@export var hurt_retreat_time: float = 1.0
-@export var horizontal_range: float = 150.0  # How far to fly horizontally
-@export var fly_height_offset: float = -50.0  # Height above player
+# Territory settings
+@export var territory_radius: float = 150.0  # How big is this enemy's territory
+@export var attack_range: float = 30.0      # How close to get to attack intruder
+@export var patrol_radius: float = 40.0     # How far from home position while patrolling
 
-# Audio
-@onready var sfx_enemy_attack: AudioStreamPlayer = $sfx_enemy_attack
-@onready var sfx_enemy_hurt: AudioStreamPlayer = $sfx_enemy_hurt
-@onready var efx_enemy_die: AudioStreamPlayer = $efx_enemy_die
+# Audio nodes
+@onready var attack_sound: AudioStreamPlayer = $sfx_enemy_attack
+@onready var hurt_sound: AudioStreamPlayer = $sfx_enemy_hurt  
+@onready var death_sound: AudioStreamPlayer = $efx_enemy_die
+@onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 
-@onready var animated_sprite = $AnimatedSprite2D
-var can_attack: bool = true
+# State variables
+var current_health: int
+var player_ref: Node = null
 var is_dead: bool = false
-var player: Node = null
-var state: String = "patrol"
-var attack_timer: float = 0.0
-var hurt_timer: float = 0.0
-var is_hurt_retreating: bool = false
+var can_attack: bool = true
+var attack_cooldown: float = 2.0
 
-# Enemy positioning and horizontal flight
-var target_position: Vector2
-var horizontal_direction: int = 1  # 1 for right, -1 for left
-var is_flying_horizontal: bool = false
-var horizontal_start_pos: Vector2
+# Territory variables
+var home_position: Vector2
+var patrol_target: Vector2
+var is_defending: bool = false
+
+# Hit and run behavior
+var retreat_timer: float = 0.0
+var is_retreating: bool = false
+var retreat_position: Vector2
 
 func _ready():
+	current_health = max_health
 	add_to_group("enemies")
-	target_position = global_position
 	
-	if has_animation("fly"):
-		animated_sprite.play("fly")
-	elif has_animation("idle"):
-		animated_sprite.play("idle")
+	# Set home base
+	home_position = global_position
+	patrol_target = home_position
+	
+	if sprite.sprite_frames and sprite.sprite_frames.has_animation("idle"):
+		sprite.play("idle")
 
 func _physics_process(delta):
 	if is_dead:
 		return
-		
-	update_timers(delta)
+	
+	# Update attack cooldown
+	if not can_attack:
+		attack_cooldown -= delta
+		if attack_cooldown <= 0:
+			can_attack = true
+			attack_cooldown = 2.0
+	
+	# Update retreat behavior
+	if is_retreating:
+		retreat_timer -= delta
+		if retreat_timer <= 0:
+			is_retreating = false
+	
 	find_player()
-	update_enemy_behavior(delta)
-	apply_enemy_movement(delta)
-
-func has_animation(anim_name: String) -> bool:
-	if animated_sprite and animated_sprite.sprite_frames:
-		return animated_sprite.sprite_frames.has_animation(anim_name)
-	return false
-
-func play_animation_safe(anim_name: String):
-	if animated_sprite and has_animation(anim_name):
-		animated_sprite.play(anim_name)
-
-func update_timers(delta):
-	if attack_timer > 0:
-		attack_timer -= delta
-	else:
-		can_attack = true
-		
-	if hurt_timer > 0:
-		hurt_timer -= delta
-	else:
-		is_hurt_retreating = false
+	territorial_behavior(delta)
+	move_and_slide()
 
 func find_player():
-	if not player or not is_instance_valid(player):
+	if not player_ref or not is_instance_valid(player_ref):
 		var players = get_tree().get_nodes_in_group("player")
 		if players.size() > 0:
-			player = players[0]
+			player_ref = players[0]
 
-func update_enemy_behavior(delta):
-	if not player or not is_instance_valid(player):
-		state = "patrol"
-		patrol_behavior()
+func territorial_behavior(delta):
+	if not player_ref or not is_instance_valid(player_ref):
+		patrol_territory()
 		return
 	
-	# Check if player is dead
-	if player.has_method("is_player_dead") and player.is_player_dead():
-		state = "patrol"
-		patrol_behavior()
+	if player_ref.has_method("is_player_dead") and player_ref.is_player_dead():
+		patrol_territory()
 		return
 	
-	var distance_to_player = global_position.distance_to(player.global_position)
+	var distance_to_player = global_position.distance_to(player_ref.global_position)
+	var player_distance_from_home = home_position.distance_to(player_ref.global_position)
 	
-	# If hurt, retreat for a moment
-	if is_hurt_retreating:
-		hurt_retreat_behavior()
-		return
-	
-	# Enemy behavior states
-	match state:
-		"patrol":
-			if distance_to_player <= detection_range:
-				state = "approach"
-				print("Enemy spotted player!")
-			else:
-				patrol_behavior()
-		
-		"approach":
-			if distance_to_player > detection_range * 1.3:
-				state = "patrol"
-			elif distance_to_player <= hover_distance:
-				state = "horizontal_attack"
-				setup_horizontal_flight()
-			else:
-				approach_player()
-		
-		"horizontal_attack":
-			if distance_to_player > hover_distance * 2.0:
-				state = "approach"
-			else:
-				horizontal_flight_attack()
-
-func patrol_behavior():
-	# Stay in place or gentle movement
-	target_position = global_position
-	velocity = velocity.move_toward(Vector2.ZERO, speed * 2.0 * get_physics_process_delta_time())
-	
-	if has_animation("fly"):
-		play_animation_safe("fly")
-
-func approach_player():
-	if not player:
-		return
-	
-	# Fly directly towards the player
-	target_position = player.global_position
-	
-	# Face the player
-	if animated_sprite:
-		animated_sprite.flip_h = global_position.x > player.global_position.x
-	
-	play_animation_safe("fly")
-
-func setup_horizontal_flight():
-	if not player:
-		return
-	
-	# Set up initial horizontal flight position
-	var player_pos = player.global_position
-	horizontal_start_pos = Vector2(player_pos.x - horizontal_range/2, player_pos.y + fly_height_offset)
-	
-	# Start flying from left to right or right to left randomly
-	horizontal_direction = 1 if randf() > 0.5 else -1
-	if horizontal_direction == 1:
-		target_position = Vector2(player_pos.x - horizontal_range/2, player_pos.y + fly_height_offset)
+	# PLAYER INVADED TERRITORY - DEFEND!
+	if player_distance_from_home <= territory_radius:
+		is_defending = true
+		defend_territory(distance_to_player)
 	else:
-		target_position = Vector2(player_pos.x + horizontal_range/2, player_pos.y + fly_height_offset)
-	
-	is_flying_horizontal = false
+		# Player left territory - return to patrol
+		if is_defending:
+			print("Intruder has left the territory!")
+			is_defending = false
+		patrol_territory()
 
-func horizontal_flight_attack():
-	if not player:
+func defend_territory(distance_to_player: float):
+	print("DEFENDING TERRITORY! Player distance: ", distance_to_player)
+	
+	# Random retreat after attacking
+	if randf() < 0.3 and can_attack and distance_to_player < 50:
+		start_retreat()
 		return
 	
-	var player_pos = player.global_position
-	
-	# Check if we've reached our target or need to turn around
-	var distance_to_target = global_position.distance_to(target_position)
-	
-	if distance_to_target < 20.0 or not is_flying_horizontal:
-		# Change direction and set new target
-		horizontal_direction *= -1
-		is_flying_horizontal = true
-		
-		if horizontal_direction == 1:
-			# Flying right
-			target_position = Vector2(player_pos.x + horizontal_range/2, player_pos.y + fly_height_offset)
-		else:
-			# Flying left
-			target_position = Vector2(player_pos.x - horizontal_range/2, player_pos.y + fly_height_offset)
-	
-	# Face the direction we're flying
-	if animated_sprite:
-		animated_sprite.flip_h = horizontal_direction < 0
-	
-	# Attack if ready and close enough to player
-	var distance_to_player = global_position.distance_to(player.global_position)
-	if can_attack and distance_to_player <= attack_range:
-		enemy_attack()
-	else:
-		play_animation_safe("fly")
-
-func enemy_attack():
-	if not player or not can_attack:
+	# Currently retreating - move away from player
+	if is_retreating:
+		retreat_from_player()
 		return
-		
+	
+	# Close enough to attack the intruder
+	if distance_to_player <= attack_range and can_attack:
+		attack_intruder()
+		return
+	
+	# Chase the intruder aggressively
+	var direction = (player_ref.global_position - global_position).normalized()
+	velocity = direction * move_speed * 1.5  # Faster when defending
+	
+	# Face the intruder
+	if sprite:
+		sprite.flip_h = direction.x < 0
+	
+	play_animation("fly")
+
+func patrol_territory():
+	var distance_to_patrol_target = global_position.distance_to(patrol_target)
+	
+	# Reached patrol point - pick new one
+	if distance_to_patrol_target < 20.0:
+		pick_new_patrol_point()
+	
+	# Move toward patrol target slowly
+	var direction = (patrol_target - global_position).normalized()
+	velocity = direction * (move_speed * 0.6)  # Slower patrol
+	
+	# Face movement direction
+	if sprite:
+		sprite.flip_h = direction.x < 0
+	
+	play_animation("idle")
+
+func pick_new_patrol_point():
+	# Pick random point within patrol radius of home
+	var angle = randf() * TAU
+	var distance = randf() * patrol_radius
+	patrol_target = home_position + Vector2(cos(angle), sin(angle)) * distance
+
+func attack_intruder():
 	can_attack = false
-	attack_timer = attack_cooldown
+	velocity = Vector2.ZERO  # Stop to attack
 	
-	print("Enemy attacks!")
-	play_animation_safe("attack")
+	print("ATTACKING INTRUDER!")
 	
-	if sfx_enemy_attack:
-		sfx_enemy_attack.play()
+	# Play attack animation and sound
+	play_animation("attack")
+	if attack_sound:
+		attack_sound.play()
 	
-	# Deal damage if close enough
-	var distance = global_position.distance_to(player.global_position)
-	if distance <= attack_range:
-		if player.has_method("take_damage_from_enemy"):
-			player.take_damage_from_enemy(attack_damage, self)
-		elif player.has_method("take_damage"):
-			player.take_damage(attack_damage)
-		
-		print("Enemy dealt ", attack_damage, " damage to player!")
+	# Deal damage to the trespasser
+	if player_ref.has_method("take_damage_from_enemy"):
+		player_ref.take_damage_from_enemy(attack_damage, self)
+	elif player_ref.has_method("take_damage"):
+		player_ref.take_damage(attack_damage)
 	
-	# Change direction occasionally for variety
-	if randf() < 0.3:
-		horizontal_direction *= -1
+	# Random chance to retreat after attacking for hit-and-run feel
+	if randf() < 0.4:
+		start_retreat()
 
-func hurt_retreat_behavior():
-	if not player:
-		return
+func start_retreat():
+	is_retreating = true
+	retreat_timer = randf_range(0.8, 1.5)  # Random retreat time
 	
-	# Fly away from player quickly
-	var direction_away = (global_position - player.global_position).normalized()
-	target_position = global_position + direction_away * 120
+	# Calculate retreat position - away from player
+	var direction_away = (global_position - player_ref.global_position).normalized()
+	retreat_position = global_position + direction_away * randf_range(60, 100)
 	
-	# Make sure it doesn't go too high or low
-	target_position.y = clamp(target_position.y, player.global_position.y - 150, player.global_position.y + 50)
+	print("Retreating for ", retreat_timer, " seconds!")
 
-func apply_enemy_movement(delta):
-	# Calculate movement toward target
-	var direction = (target_position - global_position)
-	var distance = direction.length()
+func retreat_from_player():
+	# Move to retreat position
+	var direction = (retreat_position - global_position).normalized()
+	velocity = direction * move_speed * 1.8  # Fast retreat
 	
-	if distance > 8.0:
-		direction = direction.normalized()
-		
-		# Different speeds for different behaviors
-		var move_speed = speed
-		if is_hurt_retreating:
-			move_speed = speed * 1.5  # Faster retreat
-		elif state == "approach":
-			move_speed = speed * 1.2  # Faster approach
-		elif state == "horizontal_attack":
-			move_speed = speed * 0.8   # Slightly slower when flying horizontally
-		
-		velocity = direction * move_speed
-	else:
-		# Slow down when close to target
-		velocity = velocity.move_toward(Vector2.ZERO, speed * delta * 4.0)
+	# Face retreat direction
+	if sprite:
+		sprite.flip_h = direction.x < 0
 	
-	# Keep enemy in reasonable bounds
-	var min_y = -100
-	var max_y = 600
-	
-	if global_position.y < min_y:
-		velocity.y = max(0, velocity.y)
-	elif global_position.y > max_y:
-		velocity.y = min(-50, velocity.y)
-	
-	move_and_slide()
+	play_animation("fly")
+
+func play_animation(anim_name: String):
+	if sprite and sprite.sprite_frames and sprite.sprite_frames.has_animation(anim_name):
+		if sprite.animation != anim_name:
+			sprite.play(anim_name)
 
 func take_damage(damage: int):
 	if is_dead:
 		return
-		
-	health -= damage
-	print("Enemy took ", damage, " damage. Health: ", health)
 	
-	# Play hurt sound
-	if sfx_enemy_hurt:
-		sfx_enemy_hurt.play()
+	current_health -= damage
 	
-	# Start hurt retreat
-	is_hurt_retreating = true
-	hurt_timer = hurt_retreat_time
-	state = "approach"  # Will return to approaching after retreat
-	
-	# Play hurt animation
-	if has_animation("hurt"):
-		play_animation_safe("hurt")
-		await get_tree().create_timer(0.3).timeout
-		if not is_dead and has_animation("fly"):
-			play_animation_safe("fly")
+	if hurt_sound:
+		hurt_sound.play()
 	
 	# Flash red
-	flash_damage()
+	if sprite:
+		var original_color = sprite.modulate
+		sprite.modulate = Color.RED
+		var tween = create_tween()
+		tween.tween_property(sprite, "modulate", original_color, 0.2)
 	
-	if health <= 0:
+	play_animation("hurt")
+	
+	# Getting hurt makes it more aggressive
+	is_defending = true
+	
+	if current_health <= 0:
 		die()
-
-func flash_damage():
-	if animated_sprite:
-		var original_modulate = animated_sprite.modulate
-		animated_sprite.modulate = Color.RED
-		await get_tree().create_timer(0.15).timeout
-		if is_instance_valid(self) and animated_sprite:
-			animated_sprite.modulate = original_modulate
 
 func die():
 	if is_dead:
 		return
-		
+	
 	is_dead = true
 	velocity = Vector2.ZERO
 	
-	print("Enemy defeated!")
+	print("Territory guardian defeated!")
 	
-	if efx_enemy_die:
-		efx_enemy_die.play()
+	if death_sound:
+		death_sound.play()
 	
-	# Play death animation
-	if has_animation("death") or has_animation("die"):
-		var death_anim = "death" if has_animation("death") else "die"
-		play_animation_safe(death_anim)
-		await animated_sprite.animation_finished
-	else:
-		# Fade out if no death animation
-		if animated_sprite:
-			var tween = create_tween()
-			tween.tween_property(animated_sprite, "modulate:a", 0.0, 1.0)
-			await tween.finished
+	play_animation("death")
 	
+	# Fade out
+	var tween = create_tween()
+	tween.tween_property(sprite, "modulate:a", 0.0, 1.0)
+	await tween.finished
 	queue_free()
 
-# Helper function for checking if this enemy can attack
-func can_perform_attack() -> bool:
-	return can_attack and not is_dead and not is_hurt_retreating
+func get_health_ratio() -> float:
+	return float(current_health) / float(max_health)
 
-# Helper function to get current health percentage
-func get_health_percentage() -> float:
-	return float(health) / 100.0
+# Debug - show territory in editor
+func _draw():
+	if Engine.is_editor_hint():
+		draw_circle(Vector2.ZERO, territory_radius, Color.RED, false, 2.0)
+		draw_circle(Vector2.ZERO, patrol_radius, Color.YELLOW, false, 1.0)
