@@ -1,217 +1,223 @@
 extends CharacterBody2D
 
+# Smooth movement parameters
 @export var health: int = 100
-@export var speed: float = 200.0
-@export var jump_velocity: float = -400.0
-@export var attack_damage: int = 20
-@export var attack_range: float = 60.0
+@export var speed: float = 150.0  # Reduced for smoother control
+@export var jump_velocity: float = -300.0  # Reduced for more realistic jump
+@export var acceleration: float = 800.0  # Smooth acceleration
+@export var friction: float = 1000.0  # Smooth deceleration
+@export var air_acceleration: float = 400.0  # Air control
+@export var air_friction: float = 200.0  # Air resistance
+
+# Combat parameters
+@export var attack_damage: int = 25
+@export var attack_range: float = 70.0
+@export var attack_cooldown: float = 0.4  # Faster attacks
+
+# Audio nodes (safe node references)
+@onready var sfx_jump: AudioStreamPlayer = get_node_or_null("../sfx_jump")
+@onready var sfx_run: AudioStreamPlayer = get_node_or_null("../sfx_run")
+@onready var sfx_player_died: AudioStreamPlayer = get_node_or_null("../sfx_player_died")
+@onready var sfx_player_attack: AudioStreamPlayer = get_node_or_null("../sfx_player_attack")
 
 @onready var animated_sprite = $AnimatedSprite2D
 var can_attack: bool = true
-var attack_cooldown: float = 0.5
+var is_dead: bool = false
+var coyote_time: float = 0.1  # Grace period for jumping after leaving ground
+var jump_buffer_time: float = 0.1  # Buffer for early jump input
+var coyote_timer: float = 0.0
+var jump_buffer_timer: float = 0.0
 
-# Get the gravity from the project settings to be synced with RigidBody nodes
+# Get gravity from project settings
 var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
 
 func _ready():
-	# Add player to group for easy reference
 	add_to_group("player")
-	if animated_sprite:
+	if animated_sprite and has_animation("idle"):
 		animated_sprite.play("idle")
 
 func _physics_process(delta):
-	handle_movement()
-	handle_attack()
+	if not is_dead:
+		update_timers(delta)
+		handle_movement(delta)
+		handle_attack()
 
-func handle_movement():
-	# Add gravity
-	if not is_on_floor():
-		velocity.y += gravity * get_physics_process_delta_time()
-	
-	# Handle jump
-	if Input.is_action_just_pressed("ui_accept") or Input.is_action_just_pressed("jump"):
-		if is_on_floor():
-			velocity.y = jump_velocity
-			if animated_sprite:
-				animated_sprite.play("jump")
-	
-	# Get horizontal input direction
-	var direction = 0
-	if Input.is_action_pressed("ui_left"):
-		direction -= 1
-	if Input.is_action_pressed("ui_right"):
-		direction += 1
-	
-	# Handle horizontal movement
-	if direction != 0:
-		velocity.x = direction * speed
-		
-		# Flip sprite based on movement direction
-		if animated_sprite:
-			if direction < 0:
-				animated_sprite.flip_h = true
-			elif direction > 0:
-				animated_sprite.flip_h = false
+func update_timers(delta):
+	# Update coyote time (allows jumping shortly after leaving ground)
+	if is_on_floor():
+		coyote_timer = coyote_time
 	else:
-		velocity.x = move_toward(velocity.x, 0, speed)
+		coyote_timer -= delta
 	
-	# Handle animations based on state
-	if animated_sprite and animated_sprite.animation != "attack" and animated_sprite.animation != "hurt":
-		if not is_on_floor():
-			if velocity.y < 0:
-				animated_sprite.play("jump")
-			else:
-				animated_sprite.play("fall")
-		elif direction != 0:
-			animated_sprite.play("walk")
+	# Update jump buffer (allows early jump input)
+	if jump_buffer_timer > 0:
+		jump_buffer_timer -= delta
+
+func has_animation(anim_name: String) -> bool:
+	if animated_sprite and animated_sprite.sprite_frames:
+		return animated_sprite.sprite_frames.has_animation(anim_name)
+	return false
+
+func play_animation_safe(anim_name: String):
+	if animated_sprite and has_animation(anim_name):
+		animated_sprite.play(anim_name)
+
+func handle_movement(delta):
+	# Handle jump input with buffer
+	if Input.is_action_just_pressed("ui_accept") or Input.is_action_just_pressed("jump"):
+		jump_buffer_timer = jump_buffer_time
+	
+	# Apply gravity
+	if not is_on_floor():
+		velocity.y += gravity * delta
+	
+	# Execute jump with coyote time and jump buffer
+	if jump_buffer_timer > 0 and coyote_timer > 0:
+		velocity.y = jump_velocity
+		jump_buffer_timer = 0
+		coyote_timer = 0
+		play_animation_safe("jump")
+		
+		# Play jump sound
+		if sfx_jump and not sfx_jump.playing:
+			sfx_jump.play()
+	
+	# Get horizontal input
+	var direction = Input.get_axis("ui_left", "ui_right")
+	
+	# Apply horizontal movement with smooth acceleration/deceleration
+	if direction != 0:
+		# Choose appropriate acceleration based on ground state
+		var accel = acceleration if is_on_floor() else air_acceleration
+		velocity.x = move_toward(velocity.x, direction * speed, accel * delta)
+		
+		# Flip sprite based on direction
+		if animated_sprite:
+			animated_sprite.flip_h = direction < 0
+		
+		# Play running sound (only on ground and if not already playing)
+		if is_on_floor() and sfx_run and not sfx_run.playing:
+			sfx_run.play()
+	else:
+		# Apply much higher friction when landing to prevent slippery feel
+		var fric = friction
+		if is_on_floor():
+			# Extra high friction on landing for instant stop feel
+			fric = friction * 3.0
 		else:
-			animated_sprite.play("idle")
+			fric = air_friction
+		velocity.x = move_toward(velocity.x, 0, fric * delta)
+		
+		# Stop running sound
+		if sfx_run and sfx_run.playing:
+			sfx_run.stop()
+	
+	# Handle animations (only if not in special states)
+	if animated_sprite and animated_sprite.animation not in ["attack", "hurt", "death"]:
+		if not is_on_floor():
+			if velocity.y < -50:  # Rising
+				play_animation_safe("jump")
+			else:  # Falling
+				if has_animation("fall"):
+					play_animation_safe("fall")
+				else:
+					play_animation_safe("jump")
+		elif abs(velocity.x) > 10:  # Moving threshold
+			play_animation_safe("run")
+		else:
+			play_animation_safe("idle")
 	
 	move_and_slide()
 
 func handle_attack():
-	# Check for attack input (separate from jump)
-	if Input.is_action_just_pressed("attack"):
-		if can_attack:
-			attack()
+	if Input.is_action_just_pressed("attack") and can_attack:
+		attack()
 
 func attack():
 	if not can_attack:
-		print("Attack on cooldown!")
 		return
 		
 	can_attack = false
-	print("Player attacking...")
+	play_animation_safe("attack")
 	
-	# Play attack animation
-	if animated_sprite:
-		animated_sprite.play("attack")
+	# Play attack sound
+	if sfx_player_attack:
+		sfx_player_attack.play()
 	
-	# Find enemies in range - with detailed debugging
+	# Find and damage enemies in range
 	var enemies = get_tree().get_nodes_in_group("enemies")
-	print("Found ", enemies.size(), " enemies in group")
-	
-	var found_target = false
 	for enemy in enemies:
 		if enemy and is_instance_valid(enemy):
-			var distance_to_enemy = global_position.distance_to(enemy.global_position)
-			print("Distance to enemy: ", distance_to_enemy, " (attack range: ", attack_range, ")")
-			
-			if distance_to_enemy <= attack_range:
-				print("Enemy in range! Attacking...")
+			var distance = global_position.distance_to(enemy.global_position)
+			if distance <= attack_range:
 				if enemy.has_method("take_damage"):
 					enemy.take_damage(attack_damage)
-					print("Damage dealt! Enemy health after attack: ", enemy.health)
-					print("Player health: ", health)  # Show player's current health too
-					found_target = true
-				else:
-					print("ERROR: Enemy doesn't have take_damage method!")
 				break  # Attack only one enemy at a time
-			else:
-				print("Enemy too far away to attack")
 	
-	if not found_target:
-		print("No enemies in attack range")
-	
-	# Use a Timer node instead of await to prevent interruption
-	var timer = Timer.new()
-	add_child(timer)
-	timer.timeout.connect(_on_attack_cooldown_finished)
-	timer.start(attack_cooldown)
-
-func _on_attack_cooldown_finished():
+	# Reset attack cooldown
+	await get_tree().create_timer(attack_cooldown).timeout
 	can_attack = true
-	print("Attack ready!")
-	
-	# Clean up the timer
-	var timers = get_children().filter(func(child): return child is Timer)
-	for timer in timers:
-		timer.queue_free()
-	
-	# Return to appropriate animation
-	if animated_sprite:
-		if not is_on_floor():
-			if velocity.y < 0:
-				animated_sprite.play("jump")
-			else:
-				animated_sprite.play("fall")
-		elif velocity.x != 0:
-			animated_sprite.play("walk")
-		else:
-			animated_sprite.play("idle")
 
 func take_damage(damage: int):
-	print("=== PLAYER TAKE_DAMAGE CALLED ===")
-	print("Damage received: ", damage)
-	print("Player health before damage: ", health)
-	
+	if is_dead:
+		return
+		
 	health -= damage
+	update_hearts_ui()
 	
-	print("Player health after damage: ", health)
-	print("Player's health is reduced by ", damage, " - Current health: ", health)
-	
-	# Play hurt animation if available
-	if animated_sprite:
-		animated_sprite.play("hurt")
+	# Play hurt animation
+	if has_animation("hurt"):
+		play_animation_safe("hurt")
 		await animated_sprite.animation_finished
-		if health > 0:
-			if not is_on_floor():
-				if velocity.y < 0:
-					animated_sprite.play("jump")
-				else:
-					animated_sprite.play("fall")
-			elif velocity.x != 0:
-				animated_sprite.play("walk")
-			else:
-				animated_sprite.play("idle")
 	
-	# Check if player is dead
+	# Check for death
 	if health <= 0:
-		print("PLAYER CALLING DIE FUNCTION!")
 		die()
-	else:
-		print("Player still alive with ", health, " health")
 
 func take_damage_from_enemy(damage: int, enemy: Node):
-	print("Player taking damage from enemy...")
-	# Double-check we're still in range of the attacking enemy
 	if enemy and is_instance_valid(enemy):
-		var distance_to_enemy = global_position.distance_to(enemy.global_position)
-		if distance_to_enemy <= enemy.attack_range:
+		var distance = global_position.distance_to(enemy.global_position)
+		if distance <= enemy.attack_range:
 			take_damage(damage)
-		else:
-			print("Player avoided damage - out of enemy range!")
-	if health < 60:
-		$"../UI/Hearts/HBoxContainer/Heart".visible = false
-	if health < 30:
-		$"../UI/Hearts/HBoxContainer/Heart2".visible = false
-	if health < 1:
-		$"../UI/Hearts/HBoxContainer/Heart3".visible = false
 
-		# If out of range, don't take damage or play hurt animation
+func update_hearts_ui():
+	var ui_hearts = get_node_or_null("../UI/Hearts/HBoxContainer")
+	if ui_hearts:
+		var heart1 = ui_hearts.get_node_or_null("Heart")
+		var heart2 = ui_hearts.get_node_or_null("Heart2") 
+		var heart3 = ui_hearts.get_node_or_null("Heart3")
+		
+		if heart1: heart1.visible = health >= 34
+		if heart2: heart2.visible = health >= 67
+		if heart3: heart3.visible = health > 0
 
 func die():
-	print("=== PLAYER DIE FUNCTION CALLED ===")
-	print("Game Over! Player health: ", health)
-	
-	# Play death animation first, THEN pause
-	if animated_sprite:
-		print("Playing player death animation...")
-		animated_sprite.play("death")
+	if is_dead:
+		return
 		
-		# Wait for death animation to finish before pausing
-		if animated_sprite.sprite_frames and animated_sprite.sprite_frames.has_animation("death"):
-			await animated_sprite.animation_finished
-			print("Player death animation finished")
-		else:
-			# If no death animation, wait a brief moment
-			print("No death animation found, waiting...")
-			await get_tree().create_timer(1.0).timeout
+	is_dead = true
+	velocity = Vector2.ZERO
+	
+	# Stop running sound
+	if sfx_run and sfx_run.playing:
+		sfx_run.stop()
+	
+	# Play death sound
+	if sfx_player_died:
+		sfx_player_died.play()
+	
+	# Play death animation
+	if has_animation("death"):
+		play_animation_safe("death")
+		await animated_sprite.animation_finished
 	else:
-		# No animated sprite, just wait briefly
-		print("No animated sprite, waiting before game over...")
 		await get_tree().create_timer(1.0).timeout
 	
-	# NOW pause the game after animation is done
-	print("Game paused - Player is dead")
-	get_tree().reload_current_scene()
+	# Wait for death sound to finish
+	if sfx_player_died and sfx_player_died.playing:
+		await get_tree().create_timer(0.5).timeout
+	
+	# Reload scene
+	if get_tree():
+		get_tree().reload_current_scene()
+   

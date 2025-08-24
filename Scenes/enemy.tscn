@@ -1,4 +1,4 @@
-[gd_scene load_steps=33 format=3 uid="uid://ds417vby46cpa"]
+[gd_scene load_steps=36 format=3 uid="uid://ds417vby46cpa"]
 
 [ext_resource type="Script" uid="uid://cgjltv66mt2tl" path="res://Scripts/enemy.gd" id="1_4ckxu"]
 [ext_resource type="Texture2D" uid="uid://c2xjvkjr30vws" path="res://Assets/Sprites/Enemy/ATTACK.png" id="2_1un1h"]
@@ -6,6 +6,9 @@
 [ext_resource type="Texture2D" uid="uid://chcx1nkx41qv7" path="res://Assets/Sprites/Enemy/HURT.png" id="4_7v54o"]
 [ext_resource type="Texture2D" uid="uid://flueix6kfqn6" path="res://Assets/Sprites/Enemy/IDLE.png" id="5_hlgb7"]
 [ext_resource type="FontFile" uid="uid://o2oca8mw1k1c" path="res://Assets/Fonts/PixelOperator8.ttf" id="6_4ckxu"]
+[ext_resource type="AudioStream" uid="uid://bp4uxwannpqk" path="res://Assets/fx/enemy_attack.mp3" id="7_8uf12"]
+[ext_resource type="AudioStream" uid="uid://4myj57u40dp4" path="res://Assets/fx/enemy_hurt.mp3" id="8_po0sg"]
+[ext_resource type="AudioStream" uid="uid://b7h44e3v1bkkr" path="res://Assets/fx/enemy_die.mp3" id="9_haro7"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_228ad"]
 atlas = ExtResource("2_1un1h")
@@ -198,16 +201,18 @@ radius = 5.0
 radius = 7.28011
 
 [node name="Enemy" type="CharacterBody2D"]
+scale = Vector2(2, 2)
 script = ExtResource("1_4ckxu")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 position = Vector2(0, 1.90735e-06)
 scale = Vector2(0.151235, 0.165493)
 sprite_frames = SubResource("SpriteFrames_w2u1g")
-animation = &"hurt"
+animation = &"attack"
 autoplay = "idle"
 
 [node name="Panel" type="Panel" parent="AnimatedSprite2D"]
+visible = false
 offset_left = 3.0
 offset_top = 3.0
 offset_right = 120.0
@@ -241,6 +246,19 @@ autostart = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
 shape = SubResource("CircleShape2D_4ckxu")
+
+[node name="sfx_enemy_attack" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("7_8uf12")
+volume_db = -15.066
+autoplay = true
+
+[node name="sfx_enemy_hurt" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("8_po0sg")
+volume_db = -17.542
+
+[node name="efx_enemy_die" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("9_haro7")
+volume_db = -21.301
 
 [connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
 [connection signal="area_entered" from="Area2D" to="." method="_on_area_2d_area_entered"]

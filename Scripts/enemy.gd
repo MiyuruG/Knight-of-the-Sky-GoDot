@@ -1,148 +1,288 @@
 extends CharacterBody2D
 
-@export var health: int = 100
-@export var attack_damage: int = 20
-@export var attack_range: float = 50.0
-@export var attack_cooldown: float = 1.0
+# Dragon stats
+@export var health: int = 60
+@export var speed: float = 120.0
+@export var attack_damage: int = 35
+@export var attack_range: float = 60.0
+@export var detection_range: float = 200.0
+
+# Dragon flight behavior
+@export var hover_distance: float = 80.0  # How close to get to player
+@export var attack_cooldown: float = 2.0
+@export var hurt_retreat_time: float = 1.0
+
+# Audio
+@onready var sfx_enemy_attack: AudioStreamPlayer = $sfx_enemy_attack
+@onready var sfx_enemy_hurt: AudioStreamPlayer = $sfx_enemy_hurt
+@onready var efx_enemy_die: AudioStreamPlayer = $efx_enemy_die
 
 @onready var animated_sprite = $AnimatedSprite2D
-var player: CharacterBody2D = null
 var can_attack: bool = true
-var player_in_range: bool = false
+var is_dead: bool = false
+var player: Node = null
+var state: String = "patrol"
+var attack_timer: float = 0.0
+var hurt_timer: float = 0.0
+var is_hurt_retreating: bool = false
+
+# Dragon positioning
+var target_position: Vector2
+var hover_side: int = 1  # 1 for right, -1 for left
 
 func _ready():
-	# Set up the enemy sprite animation
-	if animated_sprite:
+	add_to_group("enemies")
+	target_position = global_position
+	
+	if has_animation("fly"):
+		animated_sprite.play("fly")
+	elif has_animation("idle"):
 		animated_sprite.play("idle")
-	
-	# Make enemy act like a wall - solid but doesn't push
-	collision_layer = 2  # Put on layer 2 (walls)
-	collision_mask = 0   # Don't detect anything for movement
-	
-	# Create an Area2D child for attack detection
-	var detection_area = Area2D.new()
-	var detection_shape = CollisionShape2D.new()
-	var circle_shape = CircleShape2D.new()
-	circle_shape.radius = attack_range
-	
-	add_child(detection_area)
-	detection_area.add_child(detection_shape)
-	detection_shape.shape = circle_shape
-	
-	# Connect area signals for player detection
-	detection_area.body_entered.connect(_on_player_entered_range)
-	detection_area.body_exited.connect(_on_player_exited_range)
 
 func _physics_process(delta):
-	# Enemy stays completely still - no physics movement at all
-	velocity = Vector2.ZERO
-	
-	# Only attack if player is in range
-	if player_in_range and player and can_attack:
-		attack_player()
+	if is_dead:
+		return
+		
+	update_timers(delta)
+	find_player()
+	update_dragon_behavior(delta)
+	apply_dragon_movement(delta)
 
-func _on_player_entered_range(body):
-	if body.is_in_group("player"):
-		player = body
-		player_in_range = true
-		print("Player entered attack range")
+func has_animation(anim_name: String) -> bool:
+	if animated_sprite and animated_sprite.sprite_frames:
+		return animated_sprite.sprite_frames.has_animation(anim_name)
+	return false
 
-func _on_player_exited_range(body):
-	if body.is_in_group("player"):
-		player_in_range = false
-		print("Player left attack range")
+func play_animation_safe(anim_name: String):
+	if animated_sprite and has_animation(anim_name):
+		animated_sprite.play(anim_name)
 
-func attack_player():
-	if not can_attack or not player_in_range:
+func update_timers(delta):
+	if attack_timer > 0:
+		attack_timer -= delta
+	else:
+		can_attack = true
+		
+	if hurt_timer > 0:
+		hurt_timer -= delta
+	else:
+		is_hurt_retreating = false
+
+func find_player():
+	if not player or not is_instance_valid(player):
+		var players = get_tree().get_nodes_in_group("player")
+		if players.size() > 0:
+			player = players[0]
+
+func update_dragon_behavior(_delta):
+	if not player or not is_instance_valid(player):
+		state = "patrol"
+		patrol_behavior()
 		return
 	
-	can_attack = false
+	var distance_to_player = global_position.distance_to(player.global_position)
 	
-	# Play attack animation if available
+	# If hurt, retreat for a moment
+	if is_hurt_retreating:
+		hurt_retreat_behavior()
+		return
+	
+	# Dragon behavior states
+	match state:
+		"patrol":
+			if distance_to_player <= detection_range:
+				state = "approach"
+				print("Dragon spotted player!")
+			else:
+				patrol_behavior()
+		
+		"approach":
+			if distance_to_player > detection_range * 1.3:
+				state = "patrol"
+			elif distance_to_player <= hover_distance:
+				state = "hover_attack"
+			else:
+				approach_player()
+		
+		"hover_attack":
+			if distance_to_player > hover_distance * 1.5:
+				state = "approach"
+			else:
+				hover_and_attack()
+
+func patrol_behavior():
+	# Stay in place or gentle movement
+	target_position = global_position
+	velocity = velocity.move_toward(Vector2.ZERO, speed * 2.0 * get_physics_process_delta_time())
+	
+	if has_animation("fly"):
+		play_animation_safe("fly")
+
+func approach_player():
+	if not player:
+		return
+	
+	# Fly towards the player's side (front)
+	var player_pos = player.global_position
+	
+	# Position in front of player based on which way they're facing
+	var offset_x = hover_distance * hover_side
+	var offset_y = -40  # Slightly above player
+	
+	target_position = Vector2(player_pos.x + offset_x, player_pos.y + offset_y)
+	
+	# Face the player
 	if animated_sprite:
-		animated_sprite.play("attack")
+		animated_sprite.flip_h = global_position.x > player.global_position.x
 	
-	# Wait a brief moment for attack animation, then check range before damage
-	await get_tree().create_timer(0.1).timeout
+	play_animation_safe("fly")
+
+func hover_and_attack():
+	if not player:
+		return
 	
-	# Final range check before dealing damage
-	if player and is_instance_valid(player) and player_in_range:
-		# Deal damage to player
+	# Stay hovering near player and attack when ready
+	var player_pos = player.global_position
+	var offset_x = hover_distance * hover_side
+	var offset_y = -30
+	
+	target_position = Vector2(player_pos.x + offset_x, player_pos.y + offset_y)
+	
+	# Face the player
+	if animated_sprite:
+		animated_sprite.flip_h = global_position.x > player.global_position.x
+	
+	# Attack if ready
+	if can_attack:
+		dragon_attack()
+	else:
+		play_animation_safe("fly")
+
+func dragon_attack():
+	if not player or not can_attack:
+		return
+		
+	can_attack = false
+	attack_timer = attack_cooldown
+	
+	print("Dragon attacks!")
+	play_animation_safe("attack")
+	
+	if sfx_enemy_attack:
+		sfx_enemy_attack.play()
+	
+	# Deal damage if close enough
+	var distance = global_position.distance_to(player.global_position)
+	if distance <= attack_range:
 		if player.has_method("take_damage_from_enemy"):
 			player.take_damage_from_enemy(attack_damage, self)
 		elif player.has_method("take_damage"):
 			player.take_damage(attack_damage)
-		print("Health is reduced by 20")
-	
-	# Continue cooldown
-	await get_tree().create_timer(attack_cooldown - 0.1).timeout
-	
-	# Check if enemy still exists and reset attack capability
-	if is_instance_valid(self):
-		can_attack = true
 		
-		# Return to idle animation if still alive
-		if animated_sprite and health > 0:
-			animated_sprite.play("idle")
+		print("Dragon dealt ", attack_damage, " damage!")
+	
+	# Switch sides after attacking (makes it more dynamic)
+	hover_side *= -1
+
+func hurt_retreat_behavior():
+	if not player:
+		return
+	
+	# Fly away from player quickly
+	var direction_away = (global_position - player.global_position).normalized()
+	target_position = global_position + direction_away * 120
+	
+	# Make sure it doesn't go too high or low
+	target_position.y = clamp(target_position.y, player.global_position.y - 150, player.global_position.y + 50)
+
+func apply_dragon_movement(delta):
+	# Calculate movement toward target
+	var direction = (target_position - global_position)
+	var distance = direction.length()
+	
+	if distance > 8.0:
+		direction = direction.normalized()
+		
+		# Different speeds for different behaviors
+		var move_speed = speed
+		if is_hurt_retreating:
+			move_speed = speed * 1.5  # Faster retreat
+		elif state == "approach":
+			move_speed = speed * 1.2  # Faster approach
+		
+		velocity = direction * move_speed
+	else:
+		# Slow down when close to target
+		velocity = velocity.move_toward(Vector2.ZERO, speed * delta * 4.0)
+	
+	# Keep dragon in reasonable bounds
+	var min_y = -100
+	var max_y = 600
+	
+	if global_position.y < min_y:
+		velocity.y = max(0, velocity.y)
+	elif global_position.y > max_y:
+		velocity.y = min(-50, velocity.y)
+	
+	move_and_slide()
 
 func take_damage(damage: int):
-	print("=== ENEMY TAKE_DAMAGE CALLED ===")
-	print("Damage received: ", damage)
-	print("Health before damage: ", health)
-	
+	if is_dead:
+		return
+		
 	health -= damage
+	print("Dragon took ", damage, " damage. Health: ", health)
 	
-	print("Health after damage: ", health)
-	print("Enemy's health is reduced by ", damage, " - Current health: ", health)
-
-	# Play hurt animation if available
-	if animated_sprite:
-		animated_sprite.play("hurt")
-		await animated_sprite.animation_finished
-		if health > 0:
-			animated_sprite.play("idle")
+	# Play hurt sound
+	if sfx_enemy_hurt:
+		sfx_enemy_hurt.play()
 	
-	# Check if enemy is dead
-	print("Checking if enemy should die (health <= 0): ", health <= 0)
+	# Start hurt retreat
+	is_hurt_retreating = true
+	hurt_timer = hurt_retreat_time
+	state = "approach"  # Will return to approaching after retreat
+	
+	# Play hurt animation
+	if has_animation("hurt"):
+		play_animation_safe("hurt")
+		await get_tree().create_timer(0.3).timeout
+		if not is_dead and has_animation("fly"):
+			play_animation_safe("fly")
+	
+	# Flash red
+	flash_damage()
+	
 	if health <= 0:
-		print("CALLING DIE FUNCTION!")
 		die()
-	else:
-		print("Enemy still alive with ", health, " health")
+
+func flash_damage():
+	if animated_sprite:
+		var original_modulate = animated_sprite.modulate
+		animated_sprite.modulate = Color.RED
+		await get_tree().create_timer(0.15).timeout
+		if is_instance_valid(self) and animated_sprite:
+			animated_sprite.modulate = original_modulate
 
 func die():
-	print("=== DIE FUNCTION CALLED ===")
-	print("Enemy defeated! Health: ", health)
+	if is_dead:
+		return
+		
+	is_dead = true
+	velocity = Vector2.ZERO
 	
-	# Stop any ongoing attacks
-	can_attack = false
+	print("Dragon defeated!")
 	
-	# Remove from enemy group so it can't be targeted
-	if is_in_group("enemies"):
-		remove_from_group("enemies")
-		print("Removed from enemies group")
+	if efx_enemy_die:
+		efx_enemy_die.play()
 	
-	# Play death animation if available
-	if animated_sprite:
-		print("Playing death animation...")
-		animated_sprite.play("death")
-		# Wait for death animation to finish
-		if animated_sprite.sprite_frames and animated_sprite.sprite_frames.has_animation("death"):
-			await animated_sprite.animation_finished
-			print("Death animation finished")
-		else:
-			# If no death animation, wait a brief moment
-			print("No death animation, waiting...")
-			await get_tree().create_timer(0.5).timeout
+	if has_animation("death"):
+		play_animation_safe("death")
+		await animated_sprite.animation_finished
 	else:
-		# No animated sprite, just wait briefly
-		print("No animated sprite, waiting...")
-		await get_tree().create_timer(0.5).timeout
+		# Fade out
+		if animated_sprite:
+			var tween = create_tween()
+			tween.tween_property(animated_sprite, "modulate:a", 0.0, 1.0)
+			await tween.finished
 	
-	print("About to queue_free()")
 	queue_free()
-	print("queue_free() called - enemy should disappear next frame")
-
-# Optional: Add the enemy to a group for easy reference
-func _enter_tree():
-	add_to_group("enemies")

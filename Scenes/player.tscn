@@ -318,7 +318,7 @@ animations = [{
 }],
 "loop": true,
 "name": &"run",
-"speed": 5.0
+"speed": 6.0
 }]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_v0iea"]
@@ -331,7 +331,8 @@ script = ExtResource("1_vgqql")
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 scale = Vector2(0.40625, 0.404762)
 sprite_frames = SubResource("SpriteFrames_f1ek2")
-animation = &"death"
+animation = &"run"
+frame_progress = 0.697629
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CapsuleShape2D_v0iea")

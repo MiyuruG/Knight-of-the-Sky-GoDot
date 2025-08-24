@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://ctct5l1qcw8ey"]
+
+[ext_resource type="Texture2D" uid="uid://b0d7nfkq6o6si" path="res://Assets/Sprites/Benche.png" id="1_honur"]
+
+[node name="Benches" type="Sprite2D"]
+texture = ExtResource("1_honur")

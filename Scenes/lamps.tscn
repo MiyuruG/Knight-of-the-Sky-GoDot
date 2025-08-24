@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://bee6d8xbnvbi8"]
+
+[ext_resource type="Texture2D" uid="uid://cf4hqfxysjybh" path="res://Assets/Sprites/lamps.png" id="1_dslcm"]
+
+[node name="Lamps" type="Sprite2D"]
+texture = ExtResource("1_dslcm")
