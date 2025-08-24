@@ -1,16 +1,18 @@
 extends CharacterBody2D
 
-# Dragon stats
-@export var health: int = 60
+# Enemy stats (updated values)
+@export var health: int = 100
 @export var speed: float = 120.0
-@export var attack_damage: int = 35
+@export var attack_damage: int = 10
 @export var attack_range: float = 60.0
 @export var detection_range: float = 200.0
 
-# Dragon flight behavior
+# Enemy flight behavior
 @export var hover_distance: float = 80.0  # How close to get to player
 @export var attack_cooldown: float = 2.0
 @export var hurt_retreat_time: float = 1.0
+@export var horizontal_range: float = 150.0  # How far to fly horizontally
+@export var fly_height_offset: float = -50.0  # Height above player
 
 # Audio
 @onready var sfx_enemy_attack: AudioStreamPlayer = $sfx_enemy_attack
@@ -26,9 +28,11 @@ var attack_timer: float = 0.0
 var hurt_timer: float = 0.0
 var is_hurt_retreating: bool = false
 
-# Dragon positioning
+# Enemy positioning and horizontal flight
 var target_position: Vector2
-var hover_side: int = 1  # 1 for right, -1 for left
+var horizontal_direction: int = 1  # 1 for right, -1 for left
+var is_flying_horizontal: bool = false
+var horizontal_start_pos: Vector2
 
 func _ready():
 	add_to_group("enemies")
@@ -45,8 +49,8 @@ func _physics_process(delta):
 		
 	update_timers(delta)
 	find_player()
-	update_dragon_behavior(delta)
-	apply_dragon_movement(delta)
+	update_enemy_behavior(delta)
+	apply_enemy_movement(delta)
 
 func has_animation(anim_name: String) -> bool:
 	if animated_sprite and animated_sprite.sprite_frames:
@@ -74,8 +78,14 @@ func find_player():
 		if players.size() > 0:
 			player = players[0]
 
-func update_dragon_behavior(_delta):
+func update_enemy_behavior(delta):
 	if not player or not is_instance_valid(player):
+		state = "patrol"
+		patrol_behavior()
+		return
+	
+	# Check if player is dead
+	if player.has_method("is_player_dead") and player.is_player_dead():
 		state = "patrol"
 		patrol_behavior()
 		return
@@ -87,12 +97,12 @@ func update_dragon_behavior(_delta):
 		hurt_retreat_behavior()
 		return
 	
-	# Dragon behavior states
+	# Enemy behavior states
 	match state:
 		"patrol":
 			if distance_to_player <= detection_range:
 				state = "approach"
-				print("Dragon spotted player!")
+				print("Enemy spotted player!")
 			else:
 				patrol_behavior()
 		
@@ -100,15 +110,16 @@ func update_dragon_behavior(_delta):
 			if distance_to_player > detection_range * 1.3:
 				state = "patrol"
 			elif distance_to_player <= hover_distance:
-				state = "hover_attack"
+				state = "horizontal_attack"
+				setup_horizontal_flight()
 			else:
 				approach_player()
 		
-		"hover_attack":
-			if distance_to_player > hover_distance * 1.5:
+		"horizontal_attack":
+			if distance_to_player > hover_distance * 2.0:
 				state = "approach"
 			else:
-				hover_and_attack()
+				horizontal_flight_attack()
 
 func patrol_behavior():
 	# Stay in place or gentle movement
@@ -122,14 +133,8 @@ func approach_player():
 	if not player:
 		return
 	
-	# Fly towards the player's side (front)
-	var player_pos = player.global_position
-	
-	# Position in front of player based on which way they're facing
-	var offset_x = hover_distance * hover_side
-	var offset_y = -40  # Slightly above player
-	
-	target_position = Vector2(player_pos.x + offset_x, player_pos.y + offset_y)
+	# Fly directly towards the player
+	target_position = player.global_position
 	
 	# Face the player
 	if animated_sprite:
@@ -137,35 +142,63 @@ func approach_player():
 	
 	play_animation_safe("fly")
 
-func hover_and_attack():
+func setup_horizontal_flight():
 	if not player:
 		return
 	
-	# Stay hovering near player and attack when ready
+	# Set up initial horizontal flight position
 	var player_pos = player.global_position
-	var offset_x = hover_distance * hover_side
-	var offset_y = -30
+	horizontal_start_pos = Vector2(player_pos.x - horizontal_range/2, player_pos.y + fly_height_offset)
 	
-	target_position = Vector2(player_pos.x + offset_x, player_pos.y + offset_y)
+	# Start flying from left to right or right to left randomly
+	horizontal_direction = 1 if randf() > 0.5 else -1
+	if horizontal_direction == 1:
+		target_position = Vector2(player_pos.x - horizontal_range/2, player_pos.y + fly_height_offset)
+	else:
+		target_position = Vector2(player_pos.x + horizontal_range/2, player_pos.y + fly_height_offset)
 	
-	# Face the player
+	is_flying_horizontal = false
+
+func horizontal_flight_attack():
+	if not player:
+		return
+	
+	var player_pos = player.global_position
+	
+	# Check if we've reached our target or need to turn around
+	var distance_to_target = global_position.distance_to(target_position)
+	
+	if distance_to_target < 20.0 or not is_flying_horizontal:
+		# Change direction and set new target
+		horizontal_direction *= -1
+		is_flying_horizontal = true
+		
+		if horizontal_direction == 1:
+			# Flying right
+			target_position = Vector2(player_pos.x + horizontal_range/2, player_pos.y + fly_height_offset)
+		else:
+			# Flying left
+			target_position = Vector2(player_pos.x - horizontal_range/2, player_pos.y + fly_height_offset)
+	
+	# Face the direction we're flying
 	if animated_sprite:
-		animated_sprite.flip_h = global_position.x > player.global_position.x
+		animated_sprite.flip_h = horizontal_direction < 0
 	
-	# Attack if ready
-	if can_attack:
-		dragon_attack()
+	# Attack if ready and close enough to player
+	var distance_to_player = global_position.distance_to(player.global_position)
+	if can_attack and distance_to_player <= attack_range:
+		enemy_attack()
 	else:
 		play_animation_safe("fly")
 
-func dragon_attack():
+func enemy_attack():
 	if not player or not can_attack:
 		return
 		
 	can_attack = false
 	attack_timer = attack_cooldown
 	
-	print("Dragon attacks!")
+	print("Enemy attacks!")
 	play_animation_safe("attack")
 	
 	if sfx_enemy_attack:
@@ -179,10 +212,11 @@ func dragon_attack():
 		elif player.has_method("take_damage"):
 			player.take_damage(attack_damage)
 		
-		print("Dragon dealt ", attack_damage, " damage!")
+		print("Enemy dealt ", attack_damage, " damage to player!")
 	
-	# Switch sides after attacking (makes it more dynamic)
-	hover_side *= -1
+	# Change direction occasionally for variety
+	if randf() < 0.3:
+		horizontal_direction *= -1
 
 func hurt_retreat_behavior():
 	if not player:
@@ -195,7 +229,7 @@ func hurt_retreat_behavior():
 	# Make sure it doesn't go too high or low
 	target_position.y = clamp(target_position.y, player.global_position.y - 150, player.global_position.y + 50)
 
-func apply_dragon_movement(delta):
+func apply_enemy_movement(delta):
 	# Calculate movement toward target
 	var direction = (target_position - global_position)
 	var distance = direction.length()
@@ -209,13 +243,15 @@ func apply_dragon_movement(delta):
 			move_speed = speed * 1.5  # Faster retreat
 		elif state == "approach":
 			move_speed = speed * 1.2  # Faster approach
+		elif state == "horizontal_attack":
+			move_speed = speed * 0.8   # Slightly slower when flying horizontally
 		
 		velocity = direction * move_speed
 	else:
 		# Slow down when close to target
 		velocity = velocity.move_toward(Vector2.ZERO, speed * delta * 4.0)
 	
-	# Keep dragon in reasonable bounds
+	# Keep enemy in reasonable bounds
 	var min_y = -100
 	var max_y = 600
 	
@@ -231,7 +267,7 @@ func take_damage(damage: int):
 		return
 		
 	health -= damage
-	print("Dragon took ", damage, " damage. Health: ", health)
+	print("Enemy took ", damage, " damage. Health: ", health)
 	
 	# Play hurt sound
 	if sfx_enemy_hurt:
@@ -270,19 +306,29 @@ func die():
 	is_dead = true
 	velocity = Vector2.ZERO
 	
-	print("Dragon defeated!")
+	print("Enemy defeated!")
 	
 	if efx_enemy_die:
 		efx_enemy_die.play()
 	
-	if has_animation("death"):
-		play_animation_safe("death")
+	# Play death animation
+	if has_animation("death") or has_animation("die"):
+		var death_anim = "death" if has_animation("death") else "die"
+		play_animation_safe(death_anim)
 		await animated_sprite.animation_finished
 	else:
-		# Fade out
+		# Fade out if no death animation
 		if animated_sprite:
 			var tween = create_tween()
 			tween.tween_property(animated_sprite, "modulate:a", 0.0, 1.0)
 			await tween.finished
 	
 	queue_free()
+
+# Helper function for checking if this enemy can attack
+func can_perform_attack() -> bool:
+	return can_attack and not is_dead and not is_hurt_retreating
+
+# Helper function to get current health percentage
+func get_health_percentage() -> float:
+	return float(health) / 100.0

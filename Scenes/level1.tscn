@@ -474,7 +474,8 @@ texture = ExtResource("5_nolpu")
 centered = false
 
 [node name="Player" parent="." groups=["player"] instance=ExtResource("6_mcj63")]
-position = Vector2(58, 81)
+position = Vector2(1426, -25)
+attack_damage = 50
 attack_range = 40.0
 
 [node name="Camera2D" type="Camera2D" parent="Player"]
@@ -640,9 +641,11 @@ target_level = ExtResource("16_wwu6c")
 
 [node name="Enemy" parent="." instance=ExtResource("19_nolpu")]
 position = Vector2(801, 85)
+attack_damage = 5
 
 [node name="Enemy2" parent="." instance=ExtResource("19_nolpu")]
-position = Vector2(1511, 53)
+position = Vector2(1270, 50)
+attack_damage = 5
 
 [node name="Lables" type="Node" parent="."]
 
@@ -721,9 +724,12 @@ autowrap_mode = 2
 
 [node name="Enemy3" parent="." instance=ExtResource("17_yymuf")]
 position = Vector2(672, 49)
+attack_damage = 5
 
 [node name="Enemy4" parent="." instance=ExtResource("17_yymuf")]
 position = Vector2(899, 99)
+attack_damage = 5
 
 [node name="Enemy5" parent="." instance=ExtResource("17_yymuf")]
 position = Vector2(219, 91)
+attack_damage = 5

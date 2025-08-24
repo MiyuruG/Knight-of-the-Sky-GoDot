@@ -4,9 +4,9 @@ extends CharacterBody2D
 @export var health: int = 80
 @export var fly_speed: float = 120.0
 @export var dive_speed: float = 220.0
-@export var attack_damage: int = 35
-@export var detection_range: float = 350.0
-@export var attack_range: float = 40.0
+@export var attack_damage: int = 10
+@export var detection_range: float = 50.0
+@export var attack_range: float = 20.0
 @export var attack_cooldown: float = 1.5
 
 # Components
