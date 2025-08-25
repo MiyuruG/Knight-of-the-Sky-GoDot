@@ -204,6 +204,7 @@ radius = 7.28011
 scale = Vector2(2, 2)
 collision_layer = 2
 script = ExtResource("1_4ckxu")
+attack_damage = 35
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 position = Vector2(0, 1.90735e-06)

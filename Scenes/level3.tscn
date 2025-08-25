@@ -1205,10 +1205,10 @@ position = Vector2(2542, 13)
 position = Vector2(2611, 25)
 
 [node name="RichTextLabel" type="RichTextLabel" parent="."]
-offset_left = 2516.0
-offset_top = -109.0
-offset_right = 2727.0
-offset_bottom = 6.0
+offset_left = 2498.0
+offset_top = 51.0
+offset_right = 2709.0
+offset_bottom = 166.0
 bbcode_enabled = true
 text = "[b][color=#e89e15][wave amp=50 freq=2]VICTORY![/wave][/color][/b]
 You saved the queen 
