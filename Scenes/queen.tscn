@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3 uid="uid://28qhxhjtpxhh"]
+
+[ext_resource type="Texture2D" uid="uid://dwmvt6fb7wgtm" path="res://Assets/Sprites/hi__1_-removebg-preview.png" id="1_cm4hx"]
+[ext_resource type="Script" uid="uid://cnyn5uuv46cqc" path="res://Scripts/queen.gd" id="1_gs1eq"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gs1eq"]
+size = Vector2(8, 14)
+
+[node name="Queen" type="Area2D"]
+script = ExtResource("1_gs1eq")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_gs1eq")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(-2.38419e-07, 0)
+scale = Vector2(0.0359469, 0.0331914)
+texture = ExtResource("1_cm4hx")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]

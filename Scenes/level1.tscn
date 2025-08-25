@@ -473,7 +473,7 @@ texture = ExtResource("5_nolpu")
 centered = false
 
 [node name="Player" parent="." groups=["player"] instance=ExtResource("6_mcj63")]
-position = Vector2(1426, -25)
+position = Vector2(46, 68)
 attack_damage = 50
 attack_range = 40.0
 
